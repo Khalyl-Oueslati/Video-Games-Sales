@@ -67,20 +67,24 @@ if df is not None:
     st.header("📊 Descriptive Statistics (Statistique Descriptive)")
     st.dataframe(df.describe(include='all').T)
 
-    # -----------------------------
-    # Exploratory Data Analysis
-    # -----------------------------
-    st.header("📈 Exploratory Data Analysis")
-    
+    # =============================
+    # Exploratory Data Analysis (Plots)
+    # =============================
+    st.header("📈 Exploratory Data Analysis (Plots)")
+
     st.subheader("Top 10 Best-Selling Games")
     top_games = df[['Name', 'Global_Sales']].sort_values(by='Global_Sales', ascending=False).head(10)
     fig, ax = plt.subplots(figsize=(10,5))
     sns.barplot(x='Global_Sales', y='Name', data=top_games, ax=ax, palette="viridis")
+    ax.set_xlabel("Global Sales (millions)")
+    ax.set_ylabel("Game Name")
     st.pyplot(fig)
 
     st.subheader("Distribution of Critic Scores")
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8,5))
     sns.histplot(df['Critic_Score'], bins=20, ax=ax, color='skyblue')
+    ax.set_xlabel("Critic Score")
+    ax.set_ylabel("Number of Games")
     st.pyplot(fig)
 
     st.subheader("Global Sales by Genre")
@@ -90,18 +94,23 @@ if df is not None:
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-    # -----------------------------
-    # Hit / Flop Label
-    # -----------------------------
-    st.header("🤖 Machine Learning: Hit Prediction")
+    st.subheader("Global Sales by Platform")
+    sales_by_platform = df.groupby('Platform')['Global_Sales'].sum().sort_values(ascending=False)
+    fig, ax = plt.subplots(figsize=(10,5))
+    sns.barplot(x=sales_by_platform.index, y=sales_by_platform.values, ax=ax, palette="coolwarm")
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
+
+    # =============================
+    # Hit / Flop Prediction with Random Forest
+    # =============================
+    st.header("🤖 Machine Learning: Hit/Flop Prediction (Random Forest)")
     hit_threshold = st.slider("Hit threshold (million sales)", 0.5, 5.0, 1.0)
     df['Hit'] = (df['Global_Sales'] > hit_threshold).astype(int)
     st.write("Hit vs Flop distribution:")
     st.write(df['Hit'].value_counts())
 
-    # -----------------------------
     # Features & Target
-    # -----------------------------
     X = df[['Platform','Genre','Year_of_Release','Critic_Score','User_Score']].copy()
     y = df['Hit']
     le = LabelEncoder()
@@ -117,9 +126,7 @@ if df is not None:
     X_train[num_cols] = scaler.fit_transform(X_train[num_cols])
     X_test[num_cols] = scaler.transform(X_test[num_cols])
 
-    # -----------------------------
     # Model Training
-    # -----------------------------
     rf = RandomForestClassifier(n_estimators=200, random_state=42)
     rf.fit(X_train, y_train)
     y_pred = rf.predict(X_test)
@@ -129,18 +136,14 @@ if df is not None:
     st.text("Classification Report:")
     st.text(classification_report(y_test, y_pred))
 
-    # -----------------------------
     # Feature Importance
-    # -----------------------------
     st.subheader("Feature Importance")
     feat_imp = pd.Series(rf.feature_importances_, index=X.columns).sort_values()
     fig, ax = plt.subplots()
     feat_imp.plot(kind='barh', ax=ax)
     st.pyplot(fig)
 
-    # -----------------------------
     # Predictions
-    # -----------------------------
     df['Predicted_Hit'] = rf.predict(X)
     df['Predicted_Hit_Label'] = df['Predicted_Hit'].map({1: 'Hit', 0: 'Flop'})
 
